@@ -1,0 +1,6 @@
+Flask
+flask-cors
+huggingface-hub
+python-dotenv
+emoji
+gunicorn
