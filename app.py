@@ -15,445 +15,335 @@ load_dotenv()
 app = Flask(__name__, static_folder=".")
 CORS(app)
 
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# ============================================================
-# MODEL
-# ============================================================
-
-MODEL = "Qwen/Qwen3-8B"
-
-# We use Hugging Face automatic provider routing.
-# Qwen3-8B currently has an available inference provider.
-client = InferenceClient(
-    provider="auto",
-    api_key=HF_TOKEN,
-    timeout=60
-)
+MODEL = "Qwen/Qwen3-4B-Instruct-2507"
+PROVIDER = "nscale"
 
 # ============================================================
 # EMOJI LIST
 # ============================================================
+# The AI is allowed to choose from this complete list.
+# We are NOT limiting it to only 10-15 emojis.
 
-SUPPORTED_EMOJIS = [
+EMOJIS = [
+    # Faces
     "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣",
     "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰",
     "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜",
-    "🤪", "🤨", "🧐", "🤓", "😎", "🤩", "🥳", "😏",
-    "😒", "😞", "😔", "😟", "😕", "🙁", "☹️", "😣",
-    "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠",
-    "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱", "😨",
-    "😰", "😥", "😓", "🫣", "🤗", "🤔", "🫡", "🤭",
-    "🤫", "🤥", "😶", "😐", "😑", "😬", "🙄", "😯",
-    "😦", "😧", "😮", "😲", "🥱", "😴", "🤤", "😪",
-    "😵", "🤐", "🥴", "🤢", "🤮", "🤧", "😷", "🤒",
-    "🤕", "🤑", "🤠", "😈", "👿", "👹", "👺", "🤡",
-    "💩", "👻", "💀", "☠️", "👽", "👾", "🤖", "🎃",
-    "😺", "😸", "😹", "😻", "😼", "😽", "🙀", "😿",
-    "😾",
+    "🤪", "🤨", "🧐", "🤓", "😎", "🥸", "🤩", "🥳",
 
+    # Positive / neutral
+    "😏", "😒", "😞", "😔", "😟", "😕", "🙁", "☹️",
+    "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤",
+    "😠", "😡", "🤬", "🤯", "😳", "🥵", "🥶", "😱",
+    "😨", "😰", "😥", "😓", "🫣", "🤗", "🤔", "🫡",
+    "🤭", "🫢", "🫣", "🤫", "🤥", "😶", "🫥", "😐",
+    "😑", "😬", "🙄", "😯", "😦", "😧", "😮", "😲",
+    "🥱", "😴", "🤤", "😪", "😵", "🤐", "🥴", "🤢",
+    "🤮", "🤧", "😷", "🤒", "🤕",
+
+    # Gestures
+    "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙",
+    "👏", "🙌", "👐", "🤝", "🙏", "💪", "👋", "🤚",
+    "✋", "🖐️", "☝️", "👇", "👆", "👉", "👈",
+
+    # Hearts / love
     "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍",
     "🤎", "💔", "❣️", "💕", "💞", "💓", "💗", "💖",
     "💘", "💝", "💟",
 
-    "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙",
-    "👏", "🙌", "👐", "🤲", "🙏", "💪", "👊", "✊",
-    "🤝", "☝️", "👇", "👆", "👉", "👈", "✋", "🤚",
-    "🖐️", "🖖", "👋", "🤏", "💅",
+    # Celebration
+    "🎉", "🎊", "🥳", "🎈", "🎂", "🍾", "🥂",
+    "🏆", "🥇", "🎁", "✨", "🌟", "⭐", "💫", "🔥",
 
-    "🔥", "✨", "⭐", "🌟", "💫", "⚡", "💥", "🎉",
-    "🎊", "💯", "🚀", "🏆", "🥇", "🎯", "💡",
+    # Food / drinks
+    "☕", "🍵", "🫖", "🍺", "🍻", "🍷", "🥤",
+    "🍕", "🍔", "🍟", "🌮", "🍿", "🍫", "🍰",
+    "🍩", "🍪", "🍎", "🍓", "🍉",
 
-    "☕", "🍵", "🍺", "🍻", "🥂", "🍷", "🍕", "🍔",
-    "🍟", "🌮", "🍰", "🎂", "🍫", "🍎", "🍓",
+    # Weather / nature
+    "☀️", "🌞", "🌤️", "⛅", "🌧️", "⛈️", "🌈",
+    "❄️", "🌨️", "🌪️", "🌊", "🌙", "🌸", "🌹",
+    "🌻", "🌺", "🌴", "🍀",
 
-    "⚽", "🏀", "🏏", "🎾", "🏸", "🎮", "🎧", "🎵",
-    "🎶", "🎬", "📚", "💻", "📱", "💰", "💸",
-    "✈️", "🚗", "🏠", "🌍", "🌈", "☀️", "🌙", "🌧️"
+    # Animals
+    "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼",
+    "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🙈",
+    "🙉", "🙊", "🐔", "🐧", "🐦", "🦄", "🐝", "🦋",
+
+    # Objects / symbols
+    "💡", "📚", "📖", "💻", "📱", "🎧", "🎵", "🎶",
+    "🚀", "✈️", "🚗", "🏠", "💰", "💎", "🔑",
+    "⚡", "💯", "❗", "❓", "‼️", "⁉️", "✅",
+    "❌", "⚠️", "❤️‍🔥"
 ]
 
-# ============================================================
-# FALLBACK EMOJI CLASSIFICATION
-#
-# This is ONLY used if Hugging Face is temporarily unavailable.
-# The normal path is the Qwen AI model.
-# ============================================================
-
-def fallback_emoji(text):
-
-    text = text.lower().strip()
-
-    # --------------------------------------------------------
-    # Food / drinks
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "coffee",
-        "tea",
-        "drink",
-        "cafe",
-        "chai"
-    ]):
-        return "☕"
-
-    # --------------------------------------------------------
-    # Love
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "love",
-        "romantic",
-        "romance",
-        "crush",
-        "boyfriend",
-        "girlfriend",
-        "kiss",
-        "kissing",
-        "heart"
-    ]):
-        return "😍"
-
-    # --------------------------------------------------------
-    # Happy
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "happy",
-        "happiness",
-        "joy",
-        "joyful",
-        "excited",
-        "great",
-        "awesome",
-        "amazing",
-        "wonderful",
-        "glad",
-        "celebrate",
-        "celebration",
-        "success",
-        "selected",
-        "won",
-        "victory",
-        "achievement"
-    ]):
-        return "😊"
-
-    # --------------------------------------------------------
-    # Funny
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "funny",
-        "joke",
-        "laugh",
-        "laughing",
-        "hilarious",
-        "lol"
-    ]):
-        return "😂"
-
-    # --------------------------------------------------------
-    # Sad
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "sad",
-        "unhappy",
-        "disappointed",
-        "disappointment",
-        "lonely",
-        "alone",
-        "hurt",
-        "heartbroken",
-        "lost",
-        "cry",
-        "crying"
-    ]):
-        return "😢"
-
-    # --------------------------------------------------------
-    # Angry
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "angry",
-        "anger",
-        "furious",
-        "mad",
-        "hate",
-        "annoyed",
-        "annoying",
-        "frustrated",
-        "frustration"
-    ]):
-        return "😡"
-
-    # --------------------------------------------------------
-    # Scared / fear
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "scared",
-        "afraid",
-        "fear",
-        "terrified",
-        "danger",
-        "dangerous",
-        "worried",
-        "anxious",
-        "anxiety"
-    ]):
-        return "😱"
-
-    # --------------------------------------------------------
-    # Tired
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "tired",
-        "sleepy",
-        "exhausted",
-        "fatigue",
-        "drained"
-    ]):
-        return "😴"
-
-    # --------------------------------------------------------
-    # Surprise
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "surprised",
-        "surprise",
-        "shocked",
-        "shock",
-        "unexpected",
-        "unbelievable",
-        "wow"
-    ]):
-        return "😲"
-
-    # --------------------------------------------------------
-    # Confused
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "confused",
-        "confusion",
-        "don't understand",
-        "dont understand",
-        "what",
-        "why",
-        "how"
-    ]):
-        return "😕"
-
-    # --------------------------------------------------------
-    # Bored
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "bored",
-        "boring",
-        "nothing to do"
-    ]):
-        return "😑"
-
-    # --------------------------------------------------------
-    # Cool
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "cool",
-        "stylish",
-        "chill",
-        "vibe",
-        "swag"
-    ]):
-        return "😎"
-
-    # --------------------------------------------------------
-    # Shy
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "shy",
-        "embarrassed",
-        "blushing",
-        "blush"
-    ]):
-        return "🥰"
-
-    # --------------------------------------------------------
-    # Wink
-    # --------------------------------------------------------
-
-    if any(word in text for word in [
-        "wink",
-        "winked"
-    ]):
-        return "😉"
-
-    # --------------------------------------------------------
-    # Default
-    # --------------------------------------------------------
-
-    return "🙂"
-
+# Remove duplicates while preserving order
+EMOJIS = list(dict.fromkeys(EMOJIS))
 
 # ============================================================
-# EXTRACT EMOJI FROM AI RESPONSE
+# CREATE HUGGING FACE CLIENT
 # ============================================================
 
-def extract_emoji(response):
+client = None
 
-    if response is None:
+if HF_TOKEN:
+    client = InferenceClient(
+        provider=PROVIDER,
+        api_key=HF_TOKEN,
+        timeout=60
+    )
+
+# ============================================================
+# EMOJI EXTRACTION
+# ============================================================
+
+def extract_emoji(text):
+    """
+    Find the first supported emoji returned by the model.
+    """
+
+    if not text:
         return None
 
-    response = str(response).strip()
+    text = str(text).strip()
 
-    print("RAW AI RESPONSE:", repr(response))
+    # Exact match first
+    if text in EMOJIS:
+        return text
 
-    # Direct exact match
-    if response in SUPPORTED_EMOJIS:
-        return response
-
-    # Search for any supported emoji in the response
-    for emoji in SUPPORTED_EMOJIS:
-        if emoji in response:
-            return emoji
-
-    # Remove markdown/code formatting and search again
-    cleaned = re.sub(r"[*`_\n\r]", " ", response)
-
-    for emoji in SUPPORTED_EMOJIS:
-        if emoji in cleaned:
+    # Search for supported emoji inside response
+    for emoji in sorted(EMOJIS, key=len, reverse=True):
+        if emoji in text:
             return emoji
 
     return None
 
 
 # ============================================================
-# QWEN AI EMOJI GENERATION
+# LOCAL FALLBACK
+# ============================================================
+# This is ONLY used if Hugging Face is temporarily unavailable.
+# Normally the AI model makes the prediction.
+
+def local_fallback(text):
+
+    text = text.lower().strip()
+
+    # Drinks / food
+    if any(word in text for word in [
+        "coffee", "tea", "drink", "juice", "cafe"
+    ]):
+        return "☕"
+
+    # Love
+    if any(word in text for word in [
+        "love", "loving", "romantic", "crush",
+        "boyfriend", "girlfriend", "kiss", "kissing"
+    ]):
+        return "😍"
+
+    # Celebration / success
+    if any(word in text for word in [
+        "won", "winner", "selected", "success",
+        "achievement", "passed", "got it",
+        "finally", "celebrate", "celebration"
+    ]):
+        return "🎉"
+
+    # Happy
+    if any(word in text for word in [
+        "happy", "happiness", "joy", "joyful",
+        "excited", "great", "awesome", "amazing",
+        "wonderful", "glad"
+    ]):
+        return "😊"
+
+    # Sad
+    if any(word in text for word in [
+        "sad", "unhappy", "disappointed",
+        "lonely", "hurt", "heartbroken",
+        "cry", "crying"
+    ]):
+        return "😢"
+
+    # Angry
+    if any(word in text for word in [
+        "angry", "anger", "furious", "mad",
+        "hate", "annoyed", "frustrated"
+    ]):
+        return "😡"
+
+    # Scared
+    if any(word in text for word in [
+        "scared", "afraid", "fear",
+        "terrified", "danger", "worried",
+        "anxious"
+    ]):
+        return "😱"
+
+    # Tired
+    if any(word in text for word in [
+        "tired", "sleepy", "exhausted",
+        "sleep", "fatigue", "drained"
+    ]):
+        return "😴"
+
+    # Surprise
+    if any(word in text for word in [
+        "surprised", "surprise", "shocked",
+        "shock", "unexpected", "wow"
+    ]):
+        return "😲"
+
+    # Funny
+    if any(word in text for word in [
+        "funny", "joke", "laugh",
+        "laughing", "hilarious", "lol"
+    ]):
+        return "😂"
+
+    # Confused
+    if any(word in text for word in [
+        "confused", "confusion",
+        "don't understand", "dont understand"
+    ]):
+        return "😕"
+
+    # Bored
+    if any(word in text for word in [
+        "bored", "boring", "nothing to do"
+    ]):
+        return "😑"
+
+    # Cool
+    if any(word in text for word in [
+        "cool", "stylish", "chill",
+        "vibe", "swag"
+    ]):
+        return "😎"
+
+    # Default
+    return "🙂"
+
+
+# ============================================================
+# AI PREDICTION
 # ============================================================
 
-def generate_with_ai(text):
+def predict_with_ai(text):
 
-    prompt = f"""
-Classify the emotion or meaning of this sentence and return ONE
-appropriate emoji.
+    if not client:
+        raise RuntimeError("HF_TOKEN is missing.")
 
-IMPORTANT:
-- Return ONLY ONE emoji.
-- Do not explain.
-- Do not return words.
-- Do not return JSON.
-- Do not use markdown.
-- Do not think aloud.
+    # IMPORTANT:
+    # We tell the model to output ONLY one emoji.
+    # We do not ask it to explain its reasoning.
+
+    system_prompt = f"""
+You are an emoji prediction engine.
+
+Your job is to understand the meaning, emotion,
+activity, object, or situation in the user's sentence.
+
+Choose the SINGLE emoji that best represents the sentence.
+
+You may choose ANY emoji from this list:
+
+{" ".join(EMOJIS)}
+
+IMPORTANT RULES:
+
+1. Return exactly ONE emoji.
+2. Do not return words.
+3. Do not explain your answer.
+4. Do not return multiple emojis.
+5. Do not return JSON.
+6. Do not write a sentence.
+7. Choose the emoji based on the MEANING of the sentence,
+   not merely one keyword.
 
 Examples:
 
 "I am extremely happy today" -> 😊
-"I failed my exam" -> 😢
-"I am very angry" -> 😡
+"I finally got selected!" -> 🎉
 "I love you so much" -> ❤️
-"I want to drink coffee" -> ☕
+"I am drinking coffee" -> ☕
+"I am drinking tea" -> 🍵
+"I am very tired" -> 😴
+"I cannot believe this happened" -> 😲
+"This is hilarious" -> 😂
+"I am angry right now" -> 😡
 "I am scared" -> 😱
-"That is hilarious" -> 😂
-"I am exhausted" -> 😴
-"That is amazing!" -> 🤩
-"I don't understand this" -> 😕
-"Let's celebrate!" -> 🎉
-
-User sentence:
-{text}
+"I miss you" -> 🥺
+"I studied hard and now I understand" -> 💡
 """
-
-    print("==========================================")
-    print("SENDING REQUEST TO HUGGING FACE")
-    print("MODEL:", MODEL)
-    print("TEXT:", text)
-    print("==========================================")
 
     response = client.chat.completions.create(
         model=MODEL,
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "You are an emoji classifier. "
-                    "Return exactly one emoji and nothing else."
-                )
+                "content": system_prompt
             },
             {
                 "role": "user",
-                "content": prompt
+                "content": text
             }
         ],
-        max_tokens=20,
-        temperature=0.7,
-
-        # CRITICAL FOR QWEN3:
-        # Disable thinking so the model directly returns
-        # the emoji instead of spending output tokens
-        # on reasoning.
-        extra_body={
-            "chat_template_kwargs": {
-                "enable_thinking": False
-            }
-        }
+        max_tokens=10,
+        temperature=0.1,
+        top_p=0.9
     )
 
-    print("FULL AI RESPONSE OBJECT:")
+    # --------------------------------------------------------
+    # DEBUG INFORMATION
+    # --------------------------------------------------------
+
+    print("\n==========================================")
+    print("AI REQUEST")
+    print("MODEL:", MODEL)
+    print("PROVIDER:", PROVIDER)
+    print("TEXT:", text)
+
+    print("RAW RESPONSE OBJECT:")
     print(response)
 
     # --------------------------------------------------------
-    # Extract normal chat response
+    # Extract response
     # --------------------------------------------------------
 
-    try:
+    if not response.choices:
+        raise ValueError("AI returned no choices.")
 
-        choice = response.choices[0]
+    message = response.choices[0].message
 
-        message = choice.message
+    if message is None:
+        raise ValueError("AI returned no message.")
 
-        content = getattr(message, "content", None)
+    content = message.content
 
-        print("AI MESSAGE CONTENT:", repr(content))
+    print("RAW AI CONTENT:", repr(content))
 
-        emoji = extract_emoji(content)
+    if not content:
+        raise ValueError("AI returned empty content.")
 
-        if emoji:
-            print("AI EMOJI:", emoji)
-            return emoji
+    emoji = extract_emoji(content)
 
-    except Exception as e:
+    print("EXTRACTED EMOJI:", emoji)
+    print("==========================================\n")
 
-        print("ERROR READING AI RESPONSE:")
-        print(type(e).__name__)
-        print(str(e))
+    if not emoji:
+        raise ValueError(
+            f"AI did not return a supported emoji. Response: {content}"
+        )
 
-    # --------------------------------------------------------
-    # Sometimes reasoning/content fields can differ.
-    # Try text directly from choice if available.
-    # --------------------------------------------------------
-
-    try:
-
-        text_value = getattr(response.choices[0], "text", None)
-
-        print("AI CHOICE TEXT:", repr(text_value))
-
-        emoji = extract_emoji(text_value)
-
-        if emoji:
-            return emoji
-
-    except Exception as e:
-
-        print("CHOICE TEXT ERROR:", str(e))
-
-    return None
+    return emoji
 
 
 # ============================================================
@@ -462,7 +352,6 @@ User sentence:
 
 @app.route("/")
 def home():
-
     return send_from_directory(".", "index.html")
 
 
@@ -470,14 +359,17 @@ def home():
 # HEALTH
 # ============================================================
 
-@app.route("/health")
+@app.route("/health", methods=["GET"])
 def health():
 
     return jsonify({
         "status": "running",
         "model": MODEL,
-        "provider": "auto",
-        "huggingface": "configured" if HF_TOKEN else "missing"
+        "provider": PROVIDER,
+        "huggingface_token": (
+            "configured" if HF_TOKEN else "missing"
+        ),
+        "emoji_count": len(EMOJIS)
     })
 
 
@@ -488,75 +380,87 @@ def health():
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    data = request.get_json(silent=True) or {}
+    try:
 
-    text = str(data.get("text", "")).strip()
+        data = request.get_json(silent=True) or {}
 
-    if not text:
+        text = data.get("text", "").strip()
 
-        return jsonify({
-            "error": "Please enter some text."
-        }), 400
+        if not text:
+            return jsonify({
+                "error": "Please enter some text."
+            }), 400
 
-    print("")
-    print("==========================================")
-    print("NEW PREDICTION REQUEST")
-    print("TEXT:", text)
-    print("==========================================")
+        print("\n")
+        print("==================================================")
+        print("NEW EMOJI REQUEST")
+        print("==================================================")
+        print("TEXT:", text)
+        print("MODEL:", MODEL)
+        print("PROVIDER:", PROVIDER)
+        print(
+            "HF TOKEN:",
+            "CONFIGURED" if HF_TOKEN else "MISSING"
+        )
 
-    # ========================================================
-    # AI
-    # ========================================================
-
-    if HF_TOKEN:
+        # ====================================================
+        # AI PREDICTION
+        # ====================================================
 
         try:
 
-            emoji = generate_with_ai(text)
+            emoji = predict_with_ai(text)
 
-            if emoji:
+            print("FINAL SOURCE: AI")
+            print("FINAL EMOJI:", emoji)
 
-                print("FINAL RESULT FROM AI:", emoji)
+            return jsonify({
+                "success": True,
+                "emoji": emoji,
+                "source": "AI",
+                "model": MODEL
+            })
 
-                return jsonify({
-                    "emoji": emoji,
-                    "source": "Qwen AI"
-                })
+        except Exception as ai_error:
 
-            print("AI returned no supported emoji.")
-
-        except Exception as e:
-
-            print("")
-            print("==========================================")
+            print("\n")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print("AI ERROR")
-            print("==========================================")
-            print("ERROR TYPE:", type(e).__name__)
-            print("ERROR MESSAGE:", str(e))
-            print("==========================================")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("ERROR TYPE:", type(ai_error).__name__)
+            print("ERROR MESSAGE:", str(ai_error))
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
-    else:
+            # =================================================
+            # TEMPORARY LOCAL FALLBACK
+            # =================================================
+            # The UI still works if the external provider fails.
 
-        print("HF_TOKEN is missing.")
+            fallback = local_fallback(text)
 
-    # ========================================================
-    # FALLBACK
-    # ========================================================
+            print("FALLBACK EMOJI:", fallback)
 
-    print("Using local fallback.")
+            return jsonify({
+                "success": True,
+                "emoji": fallback,
+                "source": "fallback",
+                "ai_error": str(ai_error)
+            })
 
-    emoji = fallback_emoji(text)
+    except Exception as error:
 
-    print("FALLBACK RESULT:", emoji)
+        print("\nSERVER ERROR")
+        print(type(error).__name__)
+        print(str(error))
 
-    return jsonify({
-        "emoji": emoji,
-        "source": "fallback"
-    })
+        return jsonify({
+            "success": False,
+            "error": "Unable to process the request."
+        }), 500
 
 
 # ============================================================
-# RUN
+# START SERVER
 # ============================================================
 
 if __name__ == "__main__":
@@ -564,14 +468,18 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
 
     print("")
-    print("==========================================")
-    print("          EMOJI GENERATOR AI")
-    print("==========================================")
-    print("Hugging Face : CONNECTED")
-    print("Provider     : AUTO")
-    print("Model        :", MODEL)
-    print("Port         :", port)
-    print("==========================================")
+    print("==================================================")
+    print("              EMOJI GENERATOR AI")
+    print("==================================================")
+    print("Model    :", MODEL)
+    print("Provider :", PROVIDER)
+    print(
+        "HF Token :",
+        "CONFIGURED" if HF_TOKEN else "MISSING"
+    )
+    print("Emojis   :", len(EMOJIS))
+    print("Port     :", port)
+    print("==================================================")
 
     app.run(
         host="0.0.0.0",
