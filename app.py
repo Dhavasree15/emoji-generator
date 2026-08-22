@@ -1,15 +1,22 @@
 import os
-import re
+import json
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from huggingface_hub import InferenceClient
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+
+
+# ============================================================
+# LOAD ENVIRONMENT VARIABLES
+# ============================================================
 
 load_dotenv()
 
+
 # ============================================================
-# APP
+# FLASK CONFIGURATION
 # ============================================================
 
 app = Flask(__name__, static_folder=".")
@@ -17,168 +24,330 @@ CORS(app)
 
 
 # ============================================================
-# HUGGING FACE CONFIG
+# GEMINI CONFIGURATION
 # ============================================================
 
-HF_TOKEN = os.getenv("HF_TOKEN")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-MODEL = "Qwen/Qwen2.5-7B-Instruct"
+MODEL = "gemini-2.5-flash"
 
-if not HF_TOKEN:
-    print("❌ HF_TOKEN is missing")
+
+if not GEMINI_API_KEY:
+    print("❌ GEMINI_API_KEY is NOT configured")
 else:
-    print("✅ HF_TOKEN is configured")
-
-
-client = InferenceClient(
-    api_key=HF_TOKEN,
-    provider="auto",
-    timeout=120
-)
+    print("✅ GEMINI_API_KEY is configured")
 
 
 # ============================================================
-# EMOJI EXTRACTION
+# GEMINI CLIENT
 # ============================================================
 
-def extract_emoji(text):
+client = None
 
-    if not text:
-        return None
-
-    text = str(text).strip()
-
-    # Unicode emoji ranges
-    pattern = re.compile(
-        "["
-        "\U0001F000-\U0001FAFF"
-        "\U00002700-\U000027BF"
-        "\U00002300-\U000023FF"
-        "\u2600-\u26FF"
-        "\u2700-\u27BF"
-        "]"
+if GEMINI_API_KEY:
+    client = genai.Client(
+        api_key=GEMINI_API_KEY
     )
 
-    emojis = pattern.findall(text)
 
-    if emojis:
-        return emojis[0]
+# ============================================================
+# SYSTEM INSTRUCTION
+# ============================================================
 
-    return None
+SYSTEM_INSTRUCTION = """
+You are an intelligent emoji recommendation model.
+
+Your task is to understand the meaning and context of a user's
+sentence and select the SINGLE most appropriate Unicode emoji.
+
+IMPORTANT:
+
+Do NOT use keyword matching.
+
+Understand the complete meaning of the sentence.
+
+The emoji can represent:
+
+- emotions
+- activities
+- objects
+- food
+- animals
+- places
+- celebrations
+- work
+- study
+- travel
+- relationships
+- weather
+- sports
+- technology
+- reactions
+- everyday situations
+- feelings
+- events
+- achievements
+- humor
+- sleep
+- health
+- nature
+- transportation
+- communication
+- money
+- shopping
+- music
+- movies
+- games
+- school
+- coding
+- programming
+- friendship
+- love
+- family
+
+You have access to the full Unicode emoji set.
+
+Examples:
+
+User:
+"I want to drink coffee"
+
+Good emoji:
+☕
+
+User:
+"My cat is sleeping on my laptop"
+
+Good emoji:
+🐱
+
+User:
+"I finally got the job after months of preparation"
+
+Good emoji:
+🎉
+
+User:
+"I am studying for my exam"
+
+Good emoji:
+📚
+
+User:
+"I am extremely tired"
+
+Good emoji:
+😴
+
+User:
+"I love you"
+
+Good emoji:
+❤️
+
+User:
+"It is raining outside"
+
+Good emoji:
+🌧️
+
+User:
+"Let's go on vacation"
+
+Good emoji:
+✈️
+
+User:
+"I am hungry"
+
+Good emoji:
+🍔
+
+User:
+"I am going to the gym"
+
+Good emoji:
+🏋️
+
+User:
+"I received a gift"
+
+Good emoji:
+🎁
+
+User:
+"I am coding all night"
+
+Good emoji:
+💻
+
+User:
+"I am confused"
+
+Good emoji:
+🤔
+
+User:
+"I am getting married"
+
+Good emoji:
+💍
+
+User:
+"That movie was hilarious"
+
+Good emoji:
+😂
+
+The examples above are only examples.
+Do NOT limit your choices to those emojis.
+
+For every new sentence, reason about its meaning and select
+the most semantically appropriate emoji.
+
+Return EXACTLY ONE emoji in the "emoji" field.
+
+Never return:
+- explanations
+- sentences
+- multiple emojis
+- emoji lists
+- Markdown
+- code
+- labels
+"""
 
 
 # ============================================================
-# AI EMOJI GENERATION
+# GENERATE EMOJI USING GEMINI
 # ============================================================
 
 def generate_emoji(text):
 
-    system_prompt = """
-You are an emoji recommendation AI.
-
-Understand the complete meaning of the user's sentence.
-
-Choose ONE single Unicode emoji that best represents
-the sentence.
-
-The emoji can represent:
-- an emotion
-- an action
-- an object
-- an animal
-- food
-- travel
-- celebration
-- weather
-- work
-- study
-- relationships
-- activities
-- situations
-- reactions
-- or any other relevant concept.
-
-Do NOT use keyword matching.
-
-Understand the context.
-
-Return EXACTLY ONE Unicode emoji.
-
-Do not return:
-- words
-- explanations
-- labels
-- JSON
-- punctuation
-- multiple emojis
-
-Your entire answer must contain ONE emoji only.
-"""
-
-    user_prompt = f"""
-Sentence:
-
-{text}
-
-Return the single best emoji.
-"""
+    if not client:
+        raise RuntimeError(
+            "GEMINI_API_KEY is not configured."
+        )
 
     print()
     print("=" * 60)
     print("NEW LLM REQUEST")
     print("=" * 60)
-    print("MODEL:", MODEL)
-    print("TEXT:", text)
 
-    response = client.chat.completions.create(
+    print("MODEL:")
+    print(MODEL)
+
+    print()
+    print("USER TEXT:")
+    print(text)
+
+    # --------------------------------------------------------
+    # JSON schema
+    # --------------------------------------------------------
+
+    response_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "emoji": {
+                "type": "STRING",
+                "description": (
+                    "Exactly one Unicode emoji that best "
+                    "represents the user's sentence."
+                )
+            }
+        },
+        "required": ["emoji"]
+    }
+
+    # --------------------------------------------------------
+    # Gemini request
+    # --------------------------------------------------------
+
+    response = client.models.generate_content(
 
         model=MODEL,
 
-        messages=[
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ],
+        contents=text,
 
-        max_tokens=10,
+        config=types.GenerateContentConfig(
 
-        temperature=0.2,
+            system_instruction=SYSTEM_INSTRUCTION,
 
-        top_p=0.9
+            temperature=0.2,
+
+            max_output_tokens=20,
+
+            response_mime_type="application/json",
+
+            response_schema=response_schema
+        )
     )
 
+    # --------------------------------------------------------
+    # Debug Gemini response
+    # --------------------------------------------------------
+
     print()
-    print("RAW RESPONSE:")
+    print("RAW GEMINI RESPONSE:")
     print(response)
 
-    content = response.choices[0].message.content
+    print()
+    print("RESPONSE TEXT:")
+    print(repr(response.text))
+
+    # --------------------------------------------------------
+    # Parse JSON
+    # --------------------------------------------------------
+
+    if not response.text:
+        raise ValueError(
+            "Gemini returned an empty response."
+        )
+
+    try:
+
+        result = json.loads(
+            response.text
+        )
+
+    except json.JSONDecodeError as e:
+
+        raise ValueError(
+            f"Gemini returned invalid JSON: "
+            f"{response.text}"
+        ) from e
+
+    # --------------------------------------------------------
+    # Get emoji
+    # --------------------------------------------------------
+
+    emoji = result.get("emoji")
+
+    if not emoji:
+        raise ValueError(
+            "Gemini response does not contain an emoji."
+        )
+
+    emoji = str(emoji).strip()
+
+    # --------------------------------------------------------
+    # We expect ONE emoji.
+    #
+    # We are NOT maintaining a hardcoded list of emojis.
+    # Gemini is responsible for selecting it.
+    # --------------------------------------------------------
 
     print()
-    print("MODEL CONTENT:")
-    print(repr(content))
+    print("MODEL SELECTED:")
+    print(emoji)
 
-    emoji = extract_emoji(content)
+    print("=" * 60)
 
-    print()
-    print("EXTRACTED EMOJI:")
-    print(repr(emoji))
-
-    if emoji:
-        return emoji
-
-    raise ValueError(
-        f"Model did not return an emoji. "
-        f"Raw content: {repr(content)}"
-    )
+    return emoji
 
 
 # ============================================================
-# HOME
+# HOME PAGE
 # ============================================================
 
 @app.route("/")
@@ -191,32 +360,44 @@ def home():
 
 
 # ============================================================
-# HEALTH
+# HEALTH CHECK
 # ============================================================
 
 @app.route("/health")
 def health():
 
     return jsonify({
+
         "status": "running",
+
+        "provider": "Google Gemini",
+
         "model": MODEL,
-        "provider": "auto",
-        "huggingface": (
+
+        "gemini_api": (
             "configured"
-            if HF_TOKEN
+            if GEMINI_API_KEY
             else "missing"
         )
+
     })
 
 
 # ============================================================
-# PREDICT
+# PREDICT EMOJI
 # ============================================================
 
-@app.route("/predict", methods=["POST"])
+@app.route(
+    "/predict",
+    methods=["POST"]
+)
 def predict():
 
     try:
+
+        # ----------------------------------------------------
+        # Read request
+        # ----------------------------------------------------
 
         data = request.get_json(
             silent=True
@@ -225,52 +406,99 @@ def predict():
         text = data.get(
             "text",
             ""
-        ).strip()
+        )
+
+        if not isinstance(text, str):
+            text = str(text)
+
+        text = text.strip()
+
+        # ----------------------------------------------------
+        # Validate text
+        # ----------------------------------------------------
 
         if not text:
 
             return jsonify({
-                "error": "Please enter some text."
+
+                "error":
+                    "Please enter some text."
+
             }), 400
 
-        if not HF_TOKEN:
+        # ----------------------------------------------------
+        # Validate Gemini API
+        # ----------------------------------------------------
+
+        if not GEMINI_API_KEY:
 
             return jsonify({
-                "error": "HF_TOKEN is missing on the server."
+
+                "error":
+                    "GEMINI_API_KEY is not configured."
+
             }), 500
+
+        # ----------------------------------------------------
+        # Ask Gemini
+        # ----------------------------------------------------
 
         emoji = generate_emoji(text)
 
+        # ----------------------------------------------------
+        # SUCCESS
+        # ----------------------------------------------------
+
         print()
-        print("=" * 60)
-        print("SUCCESS")
-        print("EMOJI:", emoji)
-        print("=" * 60)
+        print("✅ SUCCESS")
+        print("INPUT :", text)
+        print("EMOJI :", emoji)
 
         return jsonify({
+
             "emoji": emoji,
-            "source": "LLM",
-            "model": MODEL
+
+            "source": "Gemini LLM",
+
+            "model": MODEL,
+
+            "provider": "Google Gemini"
+
         })
 
     except Exception as e:
 
+        # ----------------------------------------------------
+        # ERROR
+        # ----------------------------------------------------
+
         print()
         print("=" * 60)
-        print("LLM ERROR")
+        print("❌ GEMINI ERROR")
         print("=" * 60)
-        print("TYPE:", type(e).__name__)
-        print("MESSAGE:", str(e))
+
+        print("ERROR TYPE:")
+        print(type(e).__name__)
+
+        print()
+        print("ERROR MESSAGE:")
+        print(str(e))
+
         print("=" * 60)
 
         return jsonify({
-            "error": "LLM failed to generate an emoji.",
-            "details": str(e)
+
+            "error":
+                "Gemini failed to generate an emoji.",
+
+            "details":
+                str(e)
+
         }), 500
 
 
 # ============================================================
-# START
+# START SERVER
 # ============================================================
 
 if __name__ == "__main__":
@@ -284,16 +512,26 @@ if __name__ == "__main__":
 
     print()
     print("=" * 60)
-    print("             EMOJI GENERATOR")
+    print("              EMOJI GENERATOR")
     print("=" * 60)
-    print("MODEL    :", MODEL)
-    print("PROVIDER :", "auto")
+
+    print()
+    print("Provider : Google Gemini")
+    print("Model    :", MODEL)
+
     print(
-        "HF TOKEN :",
-        "Configured" if HF_TOKEN else "MISSING"
+        "API Key  :",
+        (
+            "Configured"
+            if GEMINI_API_KEY
+            else "MISSING"
+        )
     )
-    print("PORT     :", port)
+
+    print("Port     :", port)
+
     print("=" * 60)
+    print()
 
     app.run(
         host="0.0.0.0",
