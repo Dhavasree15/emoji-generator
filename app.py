@@ -2,11 +2,9 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from huggingface_hub import InferenceClient
 from dotenv import load_dotenv
-
 import os
 import json
-import emoji
-
+import re
 
 # ============================================================
 # 1. LOAD ENVIRONMENT VARIABLES
@@ -18,477 +16,273 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 
 if not HF_TOKEN:
     raise RuntimeError(
-        "\nHF_TOKEN not found.\n\n"
-        "Create a .env file and add:\n\n"
-        "HF_TOKEN=hf_your_token_here\n"
+        "HF_TOKEN not found. "
+        "Add HF_TOKEN to your .env file or Render Environment Variables."
     )
 
-
 # ============================================================
-# 2. FLASK APPLICATION
+# 2. FLASK APP
 # ============================================================
 
 app = Flask(__name__)
-
 CORS(app)
 
-
 # ============================================================
-# 3. HUGGING FACE
+# 3. HUGGING FACE CLIENT
 # ============================================================
 
 client = InferenceClient(
     api_key=HF_TOKEN
 )
 
-MODEL = "Qwen/Qwen2.5-7B-Instruct"
-
-
-# ============================================================
-# 4. CONVERT SHORTCODE TO UNICODE
-# ============================================================
-
-def convert_to_unicode_emoji(value):
-
-    if not value:
-        return value
-
-    value = str(value).strip()
-
-    try:
-
-        converted = emoji.emojize(
-            value,
-            language="alias"
-        )
-
-        return converted
-
-    except Exception:
-
-        return value
-
+# Explicitly route this model through Together
+MODEL = "Qwen/Qwen2.5-7B-Instruct:together"
 
 # ============================================================
-# 5. CLEAN MODEL RESPONSE
-# ============================================================
-
-def clean_model_response(answer):
-
-    answer = answer.strip()
-
-    if answer.startswith("```json"):
-
-        answer = answer[7:]
-
-    elif answer.startswith("```"):
-
-        answer = answer[3:]
-
-
-    if answer.endswith("```"):
-
-        answer = answer[:-3]
-
-
-    return answer.strip()
-
-
-# ============================================================
-# 6. AI EMOJI PREDICTION
+# 4. SEMANTIC / CONTEXTUAL EMOJI PREDICTION
 # ============================================================
 
 def predict_emoji(text):
 
     prompt = f"""
-You are an advanced semantic emoji recommendation AI.
+You are an AI system that predicts the single best Unicode emoji
+for a user's text.
 
-Understand the COMPLETE meaning of the user's text.
+Understand the COMPLETE meaning of the user's input.
 
-The input can be:
+Analyze:
 
-- one word
-- a phrase
-- a sentence
-- multiple sentences
-- a long paragraph
-
-Analyze the entire context.
-
-Consider:
-
-- emotions
-- sentiment
+- overall context
+- semantic meaning
+- main subject
+- intent
+- emotion
+- actions
 - objects
+- people
 - animals
 - food
+- places
 - activities
 - events
-- people
-- relationships
-- actions
-- situations
+- situation
 - tone
-- intent
-- context
 
-The goal is NOT keyword matching.
+Do NOT perform simple keyword matching.
 
 Do NOT use a predefined emoji dictionary.
 
-Do NOT use keyword-to-emoji mappings.
+Do NOT restrict yourself to a fixed set of emojis.
 
-Do NOT simply select an emoji because one word appears
-in the sentence.
+The model itself must decide which Unicode emoji best represents
+the dominant meaning of the user's COMPLETE input.
 
-Understand the meaning of the complete input.
+For example, if the user gives a long sentence containing several
+ideas, understand the sentence as a whole and select the emoji
+that best represents the MAIN concept.
 
-If the text describes an object, consider the object.
+Important rules:
 
-If the text describes an emotion, consider the emotion.
+1. Return exactly ONE Unicode emoji.
+2. The emoji can be any appropriate Unicode emoji.
+3. Do not return multiple emojis.
+4. Do not return emoji names.
+5. Do not return explanations outside the JSON.
+6. Do not use a hardcoded emoji mapping.
+7. Base the prediction entirely on the meaning of the input.
+8. Choose the dominant concept when multiple concepts exist.
+9. Confidence must be a number between 0 and 1.
+10. Reason must briefly explain why that emoji represents the
+    dominant meaning.
 
-If the text describes an activity, consider the activity.
+User input:
+{text}
 
-If the text contains multiple meanings, determine the
-DOMINANT meaning of the complete text.
-
-Return exactly THREE different emoji recommendations.
-
-The FIRST emoji must be the BEST recommendation.
-
-The second and third must be meaningful alternatives.
-
-IMPORTANT OUTPUT RULE:
-
-The "emoji" value must contain an actual Unicode emoji.
-
-Correct:
-
-"emoji": "🎉"
-
-"emoji": "🎂"
-
-"emoji": "🐶"
-
-Incorrect:
-
-"emoji": ":tada:"
-
-"emoji": "tada"
-
-"emoji": "party"
-
-Do not return emoji names.
-
-Return ONLY valid JSON.
-
-Use this exact structure:
+Return ONLY this JSON:
 
 {{
-    "predictions": [
-        {{
-            "emoji": "ONE_UNICODE_EMOJI",
-            "reason": "short explanation"
-        }},
-        {{
-            "emoji": "ONE_UNICODE_EMOJI",
-            "reason": "short explanation"
-        }},
-        {{
-            "emoji": "ONE_UNICODE_EMOJI",
-            "reason": "short explanation"
-        }}
-    ]
+    "emoji": "ONE_UNICODE_EMOJI",
+    "confidence": 0.0,
+    "reason": "short explanation"
 }}
-
-USER TEXT:
-
-{text}
 """
-
 
     try:
 
         response = client.chat.completions.create(
-
             model=MODEL,
-
             messages=[
-
                 {
                     "role": "system",
                     "content": (
-                        "You are an advanced semantic emoji "
-                        "recommendation AI. "
-                        "Understand the complete context "
-                        "and return valid JSON only."
+                        "You are a contextual emoji prediction AI. "
+                        "Understand the complete meaning of the input "
+                        "and return exactly one appropriate Unicode emoji "
+                        "inside valid JSON."
                     )
                 },
-
                 {
                     "role": "user",
                     "content": prompt
                 }
-
             ],
-
             temperature=0.1,
-
-            max_tokens=300
-
+            max_tokens=150
         )
-
 
         answer = response.choices[0].message.content.strip()
 
-
-        print("\n" + "=" * 60)
+        print("\n========================================")
         print("USER INPUT")
-        print("=" * 60)
-
+        print("========================================")
         print(text)
 
-
-        print("\n" + "=" * 60)
-        print("RAW HUGGING FACE RESPONSE")
-        print("=" * 60)
-
+        print("\n========================================")
+        print("MODEL RESPONSE")
+        print("========================================")
         print(answer)
 
-
         # ----------------------------------------------------
-        # Clean Markdown
+        # Remove accidental Markdown code fences
         # ----------------------------------------------------
 
-        answer = clean_model_response(
-            answer
+        answer = re.sub(
+            r"```(?:json)?",
+            "",
+            answer,
+            flags=re.IGNORECASE
         )
 
+        answer = answer.replace("```", "").strip()
 
         # ----------------------------------------------------
-        # Parse JSON
+        # Extract JSON if model added extra text
         # ----------------------------------------------------
 
-        result = json.loads(
-            answer
+        json_match = re.search(
+            r"\{.*\}",
+            answer,
+            re.DOTALL
         )
 
-
-        predictions = result.get(
-            "predictions",
-            []
-        )
-
-
-        if not predictions:
-
+        if not json_match:
             raise ValueError(
-                "Model returned no predictions."
+                "Model did not return valid JSON."
             )
 
+        result = json.loads(json_match.group())
 
         # ----------------------------------------------------
-        # Convert to Unicode
+        # Extract values
         # ----------------------------------------------------
 
-        cleaned_predictions = []
+        emoji = str(result.get("emoji", "")).strip()
+        confidence = result.get("confidence", 0)
+        reason = str(result.get("reason", "")).strip()
 
-
-        for prediction in predictions[:3]:
-
-            if not isinstance(
-                prediction,
-                dict
-            ):
-
-                continue
-
-
-            model_emoji = prediction.get(
-                "emoji",
-                ""
-            )
-
-
-            reason = prediction.get(
-                "reason",
-                ""
-            )
-
-
-            unicode_emoji = (
-                convert_to_unicode_emoji(
-                    model_emoji
-                )
-            )
-
-
-            if not unicode_emoji:
-
-                continue
-
-
-            cleaned_predictions.append({
-
-                "emoji": unicode_emoji,
-
-                "reason": str(
-                    reason
-                ).strip()
-
-            })
-
-
-        if not cleaned_predictions:
-
+        if not emoji:
             raise ValueError(
-                "No valid emojis were returned."
+                "Model did not return an emoji."
             )
 
+        # ----------------------------------------------------
+        # Normalize confidence
+        # ----------------------------------------------------
 
-        print("\n" + "=" * 60)
-        print("FINAL PREDICTIONS")
-        print("=" * 60)
+        try:
+            confidence = float(confidence)
+        except (TypeError, ValueError):
+            confidence = 0.0
 
-
-        for prediction in cleaned_predictions:
-
-            print(
-                prediction["emoji"],
-                "→",
-                prediction["reason"]
-            )
-
-
-        return cleaned_predictions
-
-
-    except json.JSONDecodeError as error:
-
-        print("\nJSON ERROR:")
-        print(error)
-
-        print("\nMODEL OUTPUT:")
-        print(answer)
-
-        raise ValueError(
-            "Hugging Face returned invalid JSON."
+        confidence = max(
+            0.0,
+            min(1.0, confidence)
         )
 
+        # ----------------------------------------------------
+        # Return result
+        # ----------------------------------------------------
 
-    except Exception as error:
+        return {
+            "emoji": emoji,
+            "confidence": confidence,
+            "reason": reason
+        }
 
-        print("\nHUGGING FACE ERROR:")
-        print(error)
+    except Exception as e:
 
-        raise error
+        print("\n========================================")
+        print("HUGGING FACE ERROR")
+        print("========================================")
+        print(str(e))
+
+        raise
 
 
 # ============================================================
-# 7. PREDICT API
+# 5. PREDICTION API
 # ============================================================
 
-@app.route(
-    "/predict",
-    methods=["POST"]
-)
+@app.route("/predict", methods=["POST"])
 def predict():
 
     try:
 
         data = request.get_json()
 
-
         if not data:
-
             return jsonify({
-
-                "error":
-                "Invalid JSON request."
-
+                "error": "Invalid JSON request."
             }), 400
 
+        text = data.get("text", "")
 
-        text = data.get(
-            "text",
-            ""
-        ).strip()
+        if not isinstance(text, str):
+            return jsonify({
+                "error": "Text must be a string."
+            }), 400
 
+        text = text.strip()
 
         if not text:
-
             return jsonify({
-
-                "error":
-                "Please enter some text."
-
+                "error": "Please enter some text."
             }), 400
 
+        result = predict_emoji(text)
 
-        predictions = predict_emoji(
-            text
-        )
+        return jsonify(result), 200
 
-
-        best_emoji = (
-            predictions[0]["emoji"]
-        )
-
-
-        return jsonify({
-
-            "emoji":
-            best_emoji,
-
-            "predictions":
-            predictions
-
-        })
-
-
-    except Exception as error:
+    except Exception as e:
 
         print("\nAPI ERROR:")
-        print(error)
-
+        print(str(e))
 
         return jsonify({
-
-            "error":
-            str(error)
-
+            "error": "Unable to generate emoji.",
+            "details": str(e)
         }), 500
 
 
 # ============================================================
-# 8. HEALTH CHECK
+# 6. HEALTH CHECK
 # ============================================================
 
-@app.route(
-    "/health",
-    methods=["GET"]
-)
+@app.route("/health", methods=["GET"])
 def health():
 
     return jsonify({
-
-        "status":
-        "running",
-
-        "huggingface":
-        "connected",
-
-        "model":
-        MODEL
-
+        "status": "running",
+        "model": MODEL,
+        "huggingface": "connected"
     })
 
 
 # ============================================================
-# 9. SERVE FRONTEND
+# 7. SERVE FRONTEND
 # ============================================================
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def index():
 
     return send_from_directory(
@@ -498,7 +292,7 @@ def index():
 
 
 # ============================================================
-# 10. RUN APPLICATION
+# 8. RUN APPLICATION
 # ============================================================
 
 if __name__ == "__main__":
@@ -506,38 +300,20 @@ if __name__ == "__main__":
     port = int(
         os.environ.get(
             "PORT",
-            5001
+            5000
         )
     )
 
-
-    print("\n" + "=" * 50)
+    print("\n==========================================")
     print("          EMOJI GENERATOR AI")
-    print("=" * 50)
-
-    print(
-        "🤗 Hugging Face : CONNECTED"
-    )
-
-    print(
-        "🧠 Model        :",
-        MODEL
-    )
-
-    print(
-        "🌐 Port         :",
-        port
-    )
-
-    print("=" * 50 + "\n")
-
+    print("==========================================")
+    print("🤗 Hugging Face : CONNECTED")
+    print("🧠 Model        :", MODEL)
+    print("🌐 Port         :", port)
+    print("==========================================\n")
 
     app.run(
-
         host="0.0.0.0",
-
         port=port,
-
         debug=False
-
     )
