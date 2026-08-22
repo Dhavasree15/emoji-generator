@@ -11,7 +11,10 @@
 
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet"/>
+<link
+  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
 
 <style>
 
@@ -64,32 +67,27 @@
    ============================================================ */
 
 @keyframes idle {
-
-  0%,100% {
+  0%, 100% {
     transform: scale(1);
   }
 
   50% {
     transform: scale(1.05);
   }
-
 }
 
 @keyframes bounce {
-
-  0%,100% {
+  0%, 100% {
     transform: translateY(0);
   }
 
   50% {
     transform: translateY(-15px);
   }
-
 }
 
 @keyframes shake {
-
-  0%,100% {
+  0%, 100% {
     transform: rotate(0deg);
   }
 
@@ -100,23 +98,19 @@
   75% {
     transform: rotate(-10deg);
   }
-
 }
 
 @keyframes pulse {
-
-  0%,100% {
+  0%, 100% {
     transform: scale(1);
   }
 
   50% {
     transform: scale(1.2);
   }
-
 }
 
 @keyframes zoom {
-
   0% {
     transform: scale(0);
     opacity: 0;
@@ -131,7 +125,6 @@
     transform: scale(1);
     opacity: 1;
   }
-
 }
 
 </style>
@@ -156,9 +149,7 @@ tailwind.config = {
       },
 
       fontFamily: {
-
         "display": ["Space Grotesk", "sans-serif"]
-
       },
 
       borderRadius: {
@@ -182,24 +173,23 @@ tailwind.config = {
 
 
 <body
-class="font-display text-[#333333] dark:text-gray-200"
-style="
-background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-min-height: 100vh;
-display: flex;
-justify-content: center;
-align-items: flex-start;
-padding: 20px;
-">
+  class="font-display text-[#333333] dark:text-gray-200"
+  style="
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+  "
+>
 
 
 <div
-class="relative flex min-h-screen w-full flex-col items-center justify-start p-4 antialiased"
+  class="relative flex min-h-screen w-full flex-col items-center justify-start p-4 antialiased"
 >
 
-<main
-class="flex w-full max-w-lg flex-col gap-8"
->
+<main class="flex w-full max-w-lg flex-col gap-8">
 
 
 <!-- ============================================================
@@ -209,13 +199,13 @@ class="flex w-full max-w-lg flex-col gap-8"
 <header class="text-center mt-4">
 
 <h1
-class="text-3xl font-bold tracking-tight text-[#0d141b] dark:text-white sm:text-4xl"
+  class="text-3xl font-bold tracking-tight text-[#0d141b] dark:text-white sm:text-4xl"
 >
 
 Emoji Generator
 
 <span
-class="inline-block origin-bottom-right animate-pulse"
+  class="inline-block origin-bottom-right animate-pulse"
 >
 🌟
 </span>
@@ -230,7 +220,7 @@ class="inline-block origin-bottom-right animate-pulse"
      ============================================================ -->
 
 <div
-class="flex w-full flex-col gap-6 rounded-xl bg-white p-6 shadow-sm dark:bg-[#192734] sm:p-8"
+  class="flex w-full flex-col gap-6 rounded-xl bg-white p-6 shadow-sm dark:bg-[#192734] sm:p-8"
 >
 
 <section class="flex flex-col gap-4">
@@ -239,18 +229,16 @@ class="flex w-full flex-col gap-6 rounded-xl bg-white p-6 shadow-sm dark:bg-[#19
 <label class="flex flex-col">
 
 <p
-class="pb-2 text-base font-medium text-[#0d141b] dark:text-gray-100"
+  class="pb-2 text-base font-medium text-[#0d141b] dark:text-gray-100"
 >
 Enter your text here
 </p>
 
 
 <input
-id="text-input"
-
-class="form-input h-14 w-full resize-none rounded-lg border border-[#cfdbe7] bg-background-light p-4 text-base text-[#0d141b] placeholder:text-[#4c739a] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-background-dark dark:text-white dark:placeholder-gray-400 dark:focus:border-primary"
-
-placeholder="Describe something..."
+  id="text-input"
+  class="form-input h-14 w-full resize-none rounded-lg border border-[#cfdbe7] bg-background-light p-4 text-base text-[#0d141b] placeholder:text-[#4c739a] focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-gray-600 dark:bg-background-dark dark:text-white dark:placeholder-gray-400 dark:focus:border-primary"
+  placeholder="Describe something..."
 />
 
 
@@ -258,14 +246,11 @@ placeholder="Describe something..."
 
 
 <button
-id="generate-btn"
-
-class="flex h-12 w-full cursor-pointer items-center justify-center rounded-lg bg-primary px-5 text-base font-bold text-white transition-all duration-200 ease-in-out hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-background-dark active:scale-[0.98]"
+  id="generate-btn"
+  class="flex h-12 w-full cursor-pointer items-center justify-center rounded-lg bg-primary px-5 text-base font-bold text-white transition-all duration-200 ease-in-out hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-background-dark active:scale-[0.98]"
 >
 
-<span
-class="truncate"
->
+<span class="truncate">
 Generate Emoji
 </span>
 
@@ -282,13 +267,12 @@ Generate Emoji
 <section class="flex flex-col">
 
 <div
-id="output-container"
-
-class="flex flex-col items-center gap-6 rounded-lg border-2 border-dashed border-[#cfdbe7] px-6 py-12 dark:border-gray-700 w-full"
+  id="output-container"
+  class="flex flex-col items-center gap-6 rounded-lg border-2 border-dashed border-[#cfdbe7] px-6 py-12 dark:border-gray-700 w-full"
 >
 
 <p
-class="text-lg font-bold tracking-tight text-[#0d141b] dark:text-white"
+  class="text-lg font-bold tracking-tight text-[#0d141b] dark:text-white"
 >
 Your emojis will appear here ✨
 </p>
@@ -306,48 +290,48 @@ Your emojis will appear here ✨
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('happy')"
+  class="emotion-box"
+  onclick="showEmoji('happy')"
 >
 Happy
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('sad')"
+  class="emotion-box"
+  onclick="showEmoji('sad')"
 >
 Sad
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('angry')"
+  class="emotion-box"
+  onclick="showEmoji('angry')"
 >
 Angry
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('love')"
+  class="emotion-box"
+  onclick="showEmoji('love')"
 >
 Love
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('cool')"
+  class="emotion-box"
+  onclick="showEmoji('cool')"
 >
 Cool
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('surprised')"
+  class="emotion-box"
+  onclick="showEmoji('surprised')"
 >
 Surprise
 </div>
@@ -359,16 +343,16 @@ Surprise
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('bored')"
+  class="emotion-box"
+  onclick="showEmoji('bored')"
 >
 Bored
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('shy')"
+  class="emotion-box"
+  onclick="showEmoji('shy')"
 >
 Shy
 </div>
@@ -380,8 +364,8 @@ Shy
 <div class="center-box">
 
 <div
-class="emoji"
-id="emoji"
+  class="emoji"
+  id="emoji"
 >
 😐
 </div>
@@ -393,16 +377,16 @@ id="emoji"
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('confused')"
+  class="emotion-box"
+  onclick="showEmoji('confused')"
 >
 Confused
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('tired')"
+  class="emotion-box"
+  onclick="showEmoji('tired')"
 >
 Tired
 </div>
@@ -414,48 +398,48 @@ Tired
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('scared')"
+  class="emotion-box"
+  onclick="showEmoji('scared')"
 >
 Scared
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('neutral')"
+  class="emotion-box"
+  onclick="showEmoji('neutral')"
 >
 Neutral
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('funny')"
+  class="emotion-box"
+  onclick="showEmoji('funny')"
 >
 Funny
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('cry')"
+  class="emotion-box"
+  onclick="showEmoji('cry')"
 >
 Cry
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('wink')"
+  class="emotion-box"
+  onclick="showEmoji('wink')"
 >
 Wink
 </div>
 
 
 <div
-class="emotion-box"
-onclick="showEmoji('kiss')"
+  class="emotion-box"
+  onclick="showEmoji('kiss')"
 >
 Kiss
 </div>
@@ -473,7 +457,7 @@ Kiss
 <footer class="text-center mt-4">
 
 <p
-class="text-sm text-[#4c739a] dark:text-gray-500"
+  class="text-sm text-[#4c739a] dark:text-gray-500"
 >
 Made with ❤️
 </p>
@@ -496,17 +480,10 @@ Made with ❤️
    ELEMENTS
    ============================================================ */
 
-const btn =
-    document.getElementById("generate-btn");
-
-const input =
-    document.getElementById("text-input");
-
-const outputContainer =
-    document.getElementById("output-container");
-
-const gridEmoji =
-    document.getElementById("emoji");
+const btn = document.getElementById("generate-btn");
+const input = document.getElementById("text-input");
+const outputContainer = document.getElementById("output-container");
+const gridEmoji = document.getElementById("emoji");
 
 
 /* ============================================================
@@ -515,9 +492,7 @@ const gridEmoji =
 
 btn.addEventListener("click", async () => {
 
-    const text =
-        input.value.trim();
-
+    const text = input.value.trim();
 
     if (!text) {
 
@@ -531,6 +506,15 @@ btn.addEventListener("click", async () => {
     /* ========================================================
        LOADING STATE
        ======================================================== */
+
+    btn.disabled = true;
+
+    btn.innerHTML = `
+        <span class="truncate">
+            Generating...
+        </span>
+    `;
+
 
     outputContainer.innerHTML = `
 
@@ -561,60 +545,68 @@ btn.addEventListener("click", async () => {
            CALL FLASK BACKEND
 
            IMPORTANT:
-           Use /predict instead of localhost.
 
-           This allows the same code to work when deployed
-           on Render.
+           DO NOT use:
+           http://127.0.0.1:5000/predict
+
+           DO NOT use:
+           http://127.0.0.1:5001/predict
+
+           /predict works both locally and on Render.
            ==================================================== */
 
-        const response =
-            await fetch("/predict", {
+        const response = await fetch("/predict", {
 
-                method: "POST",
+            method: "POST",
 
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
+            headers: {
+                "Content-Type": "application/json"
+            },
 
-                body: JSON.stringify({
-                    text: text
-                })
+            body: JSON.stringify({
+                text: text
+            })
 
-            });
-
-
-        const data =
-            await response.json();
+        });
 
 
         /* ====================================================
-           BACKEND ERROR
+           READ BACKEND RESPONSE
+           ==================================================== */
+
+        const data = await response.json();
+
+
+        /* ====================================================
+           CHECK FOR BACKEND ERROR
            ==================================================== */
 
         if (!response.ok) {
 
             throw new Error(
-                data.error ||
-                "Prediction failed."
+                data.error || "Prediction failed."
             );
 
         }
 
 
         /* ====================================================
-           BEST AI EMOJI
+           GET AI PREDICTION
            ==================================================== */
 
-        const bestEmoji =
-            data.emoji || "🙂";
+        const bestEmoji = data.emoji;
+
+        if (!bestEmoji) {
+
+            throw new Error(
+                "The AI did not return an emoji."
+            );
+
+        }
 
 
         /* ====================================================
-           TOP AI PREDICTIONS
-
-           If the backend provides predictions,
-           display alternatives.
+           OPTIONAL AI ALTERNATIVES
            ==================================================== */
 
         const predictions =
@@ -622,10 +614,6 @@ btn.addEventListener("click", async () => {
                 ? data.predictions
                 : [];
 
-
-        /* ====================================================
-           OTHER AI SUGGESTIONS
-           ==================================================== */
 
         let suggestionsHTML = "";
 
@@ -653,36 +641,36 @@ btn.addEventListener("click", async () => {
 
                         ${
                             alternatives
-                            .map(item => `
+                                .map(item => `
 
-                                <div
-                                    class="
-                                    flex
-                                    flex-col
-                                    items-center
-                                    justify-center
-                                    w-20
-                                    h-20
-                                    rounded-xl
-                                    border
-                                    border-[#cfdbe7]
-                                    bg-background-light
-                                    shadow-sm
-                                    hover:scale-105
-                                    transition-transform
-                                    "
-                                >
-
-                                    <span
-                                        class="text-4xl"
+                                    <div
+                                        class="
+                                            flex
+                                            flex-col
+                                            items-center
+                                            justify-center
+                                            w-20
+                                            h-20
+                                            rounded-xl
+                                            border
+                                            border-[#cfdbe7]
+                                            bg-background-light
+                                            shadow-sm
+                                            hover:scale-105
+                                            transition-transform
+                                        "
                                     >
-                                        ${item.emoji}
-                                    </span>
 
-                                </div>
+                                        <span
+                                            class="text-4xl"
+                                        >
+                                            ${item.emoji}
+                                        </span>
 
-                            `)
-                            .join("")
+                                    </div>
+
+                                `)
+                                .join("")
                         }
 
                     </div>
@@ -695,7 +683,7 @@ btn.addEventListener("click", async () => {
 
 
         /* ====================================================
-           DISPLAY RESULT
+           DISPLAY AI RESULT
            ==================================================== */
 
         outputContainer.innerHTML = `
@@ -767,6 +755,19 @@ btn.addEventListener("click", async () => {
 
     }
 
+
+    finally {
+
+        btn.disabled = false;
+
+        btn.innerHTML = `
+            <span class="truncate">
+                Generate Emoji
+            </span>
+        `;
+
+    }
+
 });
 
 
@@ -775,48 +776,36 @@ btn.addEventListener("click", async () => {
 
    IMPORTANT:
 
-   This grid is only a UI feature.
+   This grid is ONLY a UI feature.
 
-   These emojis DO NOT control the AI prediction.
+   These emojis do NOT control the AI prediction.
 
    The Generate Emoji button sends the complete text
-   to the Hugging Face AI model.
+   to the Hugging Face model.
 
-   The AI independently decides the emoji.
+   The AI independently chooses the emoji.
    ============================================================ */
 
 const emojiMap = {
 
     happy: "😊",
-
     sad: "😢",
-
     angry: "😡",
-
     love: "😍",
-
     cool: "😎",
 
     surprised: "😲",
-
     bored: "🤨",
-
     shy: "🥰",
-
     confused: "😕",
 
     tired: "😴",
-
     scared: "😱",
-
     neutral: "😐",
 
     funny: "😂",
-
     cry: "😭",
-
     wink: "😉",
-
     kiss: "😘"
 
 };
@@ -829,35 +818,24 @@ const emojiMap = {
 const animationMap = {
 
     happy: "bounce 1s ease",
-
     sad: "pulse 1s ease",
-
     angry: "shake 0.6s ease",
 
     love: "pulse 1s ease",
-
     cool: "bounce 1s ease",
-
     surprised: "zoom 0.7s ease",
 
     bored: "pulse 1s ease",
-
     shy: "zoom 1s ease",
-
     confused: "shake 0.8s ease",
 
     tired: "pulse 1s ease",
-
     scared: "zoom 1s ease",
-
     neutral: "none",
 
     funny: "bounce 1s ease",
-
     cry: "pulse 1s ease",
-
     wink: "zoom 0.8s ease",
-
     kiss: "pulse 1s ease"
 
 };
@@ -870,9 +848,7 @@ const animationMap = {
 function showEmoji(emotion) {
 
     if (!emojiMap[emotion]) {
-
         return;
-
     }
 
 
