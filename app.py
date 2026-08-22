@@ -6,26 +6,34 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
 
+# ============================================================
+# LOAD ENVIRONMENT VARIABLES
+# ============================================================
+
 load_dotenv()
+
+# ============================================================
+# FLASK APP
+# ============================================================
 
 app = Flask(__name__, static_folder=".")
 CORS(app)
 
 # ============================================================
-# CONFIGURATION
+# HUGGING FACE CONFIGURATION
 # ============================================================
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-MODEL = "deepseek-ai/DeepSeek-V3-0324"
-PROVIDER = "deepinfra"
+MODEL = "Qwen/Qwen3-8B"
 
-# ============================================================
-# HUGGING FACE CLIENT
-# ============================================================
+if not HF_TOKEN:
+    print("WARNING: HF_TOKEN is missing.")
 
+# Use Hugging Face automatic provider routing.
+# Hugging Face chooses an available provider for the model.
 client = InferenceClient(
-    provider=PROVIDER,
+    provider="auto",
     api_key=HF_TOKEN,
     timeout=90
 )
@@ -38,10 +46,10 @@ EMOJI_LIST = """
 😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 🙃 😉 😌
 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 🤨 🧐
 🤓 😎 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 ☹️
-😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳
-🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🫣 🤭 🤫 🤥
-😶 😐 😑 😬 🙄 😯 😦 😧 😮 😲 🥱 😴 🤤
-😪 😵 🤐 🤢 🤮 🤧 😷 🤒 🤕 🤑 🤠
+😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯
+😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🫣 🤭 🤫 🤥
+😶 😐 😑 😬 🙄 😯 😦 😧 😮 😲 🥱 😴
+🤤 😪 😵 🤐 🤢 🤮 🤧 😷 🤒 🤕 🤑 🤠
 
 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎
 💔 ❤️‍🔥 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟
@@ -53,14 +61,14 @@ EMOJI_LIST = """
 🎉 🎊 🎂 🎁 🎈 🏆 🥇 🥈 🥉
 🔥 ⭐ 🌟 ✨ 💫 ⚡ 💥 💯 🚀
 
-☀️ 🌤️ ⛅ 🌥️ ☁️ 🌧️ ⛈️ 🌩️ ❄️
-☃️ 🌈 🌙 🌕 🌑 🌸 🌺 🌻 🌹 🌷
-🌱 🌿 🌳 🌴 🍀
+☀️ 🌤️ ⛅ 🌥️ ☁️ 🌧️ ⛈️ 🌩️
+❄️ ☃️ 🌈 🌙 🌕 🌑
+🌸 🌺 🌻 🌹 🌷 🌱 🌿 🌳 🌴 🍀
 
 🍎 🍊 🍋 🍉 🍇 🍓 🍒 🥭 🍍
 🍕 🍔 🍟 🌭 🍿 🍩 🍪 🎂 🍰
-🍫 🍭 🍬 🍦 ☕ 🫖 🥤 🍹
-🍜 🍝 🍚 🍛 🍣 🍱
+🍫 🍭 🍬 🍦 ☕ 🫖 🥤 🧋
+🍹 🍜 🍝 🍚 🍛 🍣 🍱
 
 ⚽ 🏀 🏈 ⚾ 🎾 🏐 🏸 🏏
 🏓 🥊 🏋️ 🎮 🎸 🎹 🎤 🎧
@@ -77,104 +85,147 @@ EMOJI_LIST = """
 """
 
 # ============================================================
-# EXTRACT ONE EMOJI FROM MODEL RESPONSE
+# CONVERT EMOJI LIST INTO PYTHON LIST
 # ============================================================
 
-def extract_emoji(response_text):
+SUPPORTED_EMOJIS = EMOJI_LIST.split()
 
-    if not response_text:
+# Sort longest first.
+# This helps with combined emojis such as ❤️‍🔥.
+SUPPORTED_EMOJIS = sorted(
+    SUPPORTED_EMOJIS,
+    key=len,
+    reverse=True
+)
+
+# ============================================================
+# EXTRACT EMOJI FROM MODEL RESPONSE
+# ============================================================
+
+def extract_emoji(text):
+
+    if not text:
         return None
 
-    response_text = response_text.strip()
+    text = text.strip()
 
-    # Check emojis from our vocabulary.
-    emojis = EMOJI_LIST.split()
-
-    # Longest first so combined emojis are checked correctly.
-    emojis = sorted(emojis, key=len, reverse=True)
-
-    for emoji in emojis:
-        if emoji in response_text:
+    # First look for one of our supported emojis.
+    for emoji in SUPPORTED_EMOJIS:
+        if emoji in text:
             return emoji
 
     return None
 
 
 # ============================================================
-# AI PREDICTION
+# AI EMOJI GENERATOR
 # ============================================================
 
 def generate_emoji(text):
 
     prompt = f"""
-You are an intelligent AI emoji generator.
+You are an AI emoji generator.
 
-Read the user's sentence carefully.
+Understand the complete meaning of the user's sentence.
 
-Choose ONE emoji that best represents the overall meaning,
-emotion, action, object, activity, or situation.
+Choose ONE emoji that best represents the sentence.
 
-You have a large emoji vocabulary below:
+You can choose from this large emoji vocabulary:
 
 {EMOJI_LIST}
 
-Important rules:
+IMPORTANT RULES:
 
-- Return EXACTLY ONE emoji.
-- Do not return any explanation.
-- Do not return words.
-- Do not return multiple emojis.
-- Choose the emoji based on the meaning of the entire sentence.
-- The answer does not have to be a facial expression.
-- If the sentence describes an object, activity, food, drink,
-  place, weather, celebration, sport, or other situation,
-  choose an appropriate emoji for that meaning.
+1. Return exactly ONE emoji.
+2. Do not return words.
+3. Do not explain your answer.
+4. Do not return multiple emojis.
+5. Choose based on the meaning of the entire sentence.
+6. The emoji can represent an emotion, object, activity,
+   food, drink, place, weather, celebration, sport,
+   reaction, or situation.
 
 Examples:
 
-"I am extremely happy today"
+Sentence:
+I am extremely happy today!
+
+Answer:
 😊
 
-"I am drinking tea"
+Sentence:
+I want to drink some coffee.
+
+Answer:
 ☕
 
-"I love you so much"
+Sentence:
+I love you so much.
+
+Answer:
 ❤️
 
-"I won the competition"
+Sentence:
+I won the competition!
+
+Answer:
 🏆
 
-"It is raining outside"
+Sentence:
+It is raining outside.
+
+Answer:
 🌧️
 
-"I am going to sleep"
+Sentence:
+I am going to sleep.
+
+Answer:
 😴
 
-"I am very angry"
-😡
+Sentence:
+I am eating pizza.
 
-"I am confused about this"
-😕
-
-"I am eating pizza"
+Answer:
 🍕
 
-"I am going on vacation"
+Sentence:
+I am going on vacation.
+
+Answer:
 ✈️
 
-Now classify this sentence:
+Sentence:
+I am very angry.
+
+Answer:
+😡
+
+Sentence:
+I am confused about this.
+
+Answer:
+😕
+
+Now analyze this sentence:
 
 {text}
 
 Return ONLY ONE emoji.
 """
 
+    print("Sending request to Hugging Face...")
+    print("Model:", MODEL)
+
     response = client.chat.completions.create(
         model=MODEL,
         messages=[
             {
                 "role": "system",
-                "content": "You are an AI emoji generator. Return exactly one emoji."
+                "content": (
+                    "You are an AI emoji generator. "
+                    "Return exactly one emoji and nothing else."
+                )
             },
             {
                 "role": "user",
@@ -185,9 +236,9 @@ Return ONLY ONE emoji.
         temperature=0
     )
 
-    result = response.choices[0].message.content.strip()
+    result = response.choices[0].message.content
 
-    print("MODEL RESPONSE:", repr(result))
+    print("RAW AI RESPONSE:", repr(result))
 
     emoji = extract_emoji(result)
 
@@ -195,7 +246,8 @@ Return ONLY ONE emoji.
         return emoji
 
     raise ValueError(
-        f"Model did not return a supported emoji: {result}"
+        "The AI did not return a supported emoji. "
+        f"AI response was: {result}"
     )
 
 
@@ -205,7 +257,11 @@ Return ONLY ONE emoji.
 
 @app.route("/")
 def home():
-    return send_from_directory(".", "index.html")
+
+    return send_from_directory(
+        ".",
+        "index.html"
+    )
 
 
 # ============================================================
@@ -218,13 +274,13 @@ def health():
     return jsonify({
         "status": "running",
         "model": MODEL,
-        "provider": PROVIDER,
+        "provider": "auto",
         "token_configured": bool(HF_TOKEN)
     })
 
 
 # ============================================================
-# PREDICT
+# PREDICT EMOJI
 # ============================================================
 
 @app.route("/predict", methods=["POST"])
@@ -232,9 +288,22 @@ def predict():
 
     try:
 
-        data = request.get_json(silent=True) or {}
+        # ----------------------------------------------------
+        # Read request
+        # ----------------------------------------------------
 
-        text = data.get("text", "").strip()
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        text = data.get(
+            "text",
+            ""
+        ).strip()
+
+        # ----------------------------------------------------
+        # Validate input
+        # ----------------------------------------------------
 
         if not text:
 
@@ -242,16 +311,33 @@ def predict():
                 "error": "Please enter some text."
             }), 400
 
-        print("\n========================================")
-        print("NEW REQUEST")
-        print("========================================")
+        # ----------------------------------------------------
+        # Log request
+        # ----------------------------------------------------
+
+        print()
+        print("=" * 60)
+        print("NEW EMOJI REQUEST")
+        print("=" * 60)
+
         print("TEXT:", text)
         print("MODEL:", MODEL)
-        print("PROVIDER:", PROVIDER)
-        print("TOKEN:", "AVAILABLE" if HF_TOKEN else "MISSING")
-        print("========================================")
+        print(
+            "HF TOKEN:",
+            "CONFIGURED" if HF_TOKEN else "MISSING"
+        )
+
+        print("=" * 60)
+
+        # ----------------------------------------------------
+        # Generate emoji using AI
+        # ----------------------------------------------------
 
         emoji = generate_emoji(text)
+
+        # ----------------------------------------------------
+        # Success
+        # ----------------------------------------------------
 
         print("FINAL EMOJI:", emoji)
 
@@ -262,12 +348,27 @@ def predict():
 
     except Exception as e:
 
-        print("\n========================================")
+        # ----------------------------------------------------
+        # Print complete error to Render logs
+        # ----------------------------------------------------
+
+        print()
+        print("=" * 60)
         print("AI ERROR")
-        print("========================================")
+        print("=" * 60)
+
+        print("ERROR TYPE:")
         print(type(e).__name__)
+
+        print()
+        print("ERROR MESSAGE:")
         print(str(e))
-        print("========================================")
+
+        print("=" * 60)
+
+        # ----------------------------------------------------
+        # Send useful error to frontend
+        # ----------------------------------------------------
 
         return jsonify({
             "error": "Unable to generate emoji.",
@@ -281,16 +382,28 @@ def predict():
 
 if __name__ == "__main__":
 
-    port = int(os.environ.get("PORT", 5000))
+    port = int(
+        os.environ.get(
+            "PORT",
+            5000
+        )
+    )
 
-    print("\n========================================")
-    print("        EMOJI GENERATOR AI")
-    print("========================================")
+    print()
+    print("=" * 60)
+    print("              EMOJI GENERATOR AI")
+    print("=" * 60)
+
     print("Model    :", MODEL)
-    print("Provider :", PROVIDER)
-    print("Token    :", "Configured" if HF_TOKEN else "MISSING")
+    print("Provider :", "Hugging Face Auto Routing")
+    print(
+        "HF Token :",
+        "Configured" if HF_TOKEN else "MISSING"
+    )
     print("Port     :", port)
-    print("========================================\n")
+
+    print("=" * 60)
+    print()
 
     app.run(
         host="0.0.0.0",
