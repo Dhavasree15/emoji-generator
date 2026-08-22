@@ -8,21 +8,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ============================================================
+# APP
+# ============================================================
+
 app = Flask(__name__, static_folder=".")
 CORS(app)
 
+
 # ============================================================
-# CONFIGURATION
+# HUGGING FACE CONFIG
 # ============================================================
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-MODEL = "Qwen/Qwen3-8B"
+MODEL = "Qwen/Qwen2.5-7B-Instruct"
 
 if not HF_TOKEN:
-    print("ERROR: HF_TOKEN is missing.")
+    print("❌ HF_TOKEN is missing")
 else:
-    print("HF_TOKEN is configured.")
+    print("✅ HF_TOKEN is configured")
 
 
 client = InferenceClient(
@@ -43,11 +48,8 @@ def extract_emoji(text):
 
     text = str(text).strip()
 
-    # Remove markdown/code formatting if present
-    text = text.replace("```", "").strip()
-
     # Unicode emoji ranges
-    emoji_pattern = re.compile(
+    pattern = re.compile(
         "["
         "\U0001F000-\U0001FAFF"
         "\U00002700-\U000027BF"
@@ -57,10 +59,10 @@ def extract_emoji(text):
         "]"
     )
 
-    matches = emoji_pattern.findall(text)
+    emojis = pattern.findall(text)
 
-    if matches:
-        return matches[0]
+    if emojis:
+        return emojis[0]
 
     return None
 
@@ -72,44 +74,58 @@ def extract_emoji(text):
 def generate_emoji(text):
 
     system_prompt = """
-You are an intelligent emoji generator.
+You are an emoji recommendation AI.
 
-Understand the meaning and context of the user's sentence.
+Understand the complete meaning of the user's sentence.
 
-Choose the SINGLE Unicode emoji that best represents
-the meaning of the sentence.
+Choose ONE single Unicode emoji that best represents
+the sentence.
 
-You are NOT doing keyword matching.
+The emoji can represent:
+- an emotion
+- an action
+- an object
+- an animal
+- food
+- travel
+- celebration
+- weather
+- work
+- study
+- relationships
+- activities
+- situations
+- reactions
+- or any other relevant concept.
 
-Consider:
-- emotion
-- action
-- object
-- situation
-- context
-- intention
-- tone
+Do NOT use keyword matching.
 
-You may choose ANY appropriate Unicode emoji.
+Understand the context.
 
-IMPORTANT:
-Return EXACTLY ONE emoji.
-Do not return words.
-Do not explain.
-Do not return JSON.
-Do not return multiple emojis.
+Return EXACTLY ONE Unicode emoji.
+
+Do not return:
+- words
+- explanations
+- labels
+- JSON
+- punctuation
+- multiple emojis
+
+Your entire answer must contain ONE emoji only.
 """
 
     user_prompt = f"""
-Convert this sentence into the most appropriate single emoji:
+Sentence:
 
 {text}
 
-Return only one emoji.
+Return the single best emoji.
 """
 
-    print("\n" + "=" * 60)
-    print("LLM REQUEST")
+    print()
+    print("=" * 60)
+    print("NEW LLM REQUEST")
     print("=" * 60)
     print("MODEL:", MODEL)
     print("TEXT:", text)
@@ -129,54 +145,40 @@ Return only one emoji.
             }
         ],
 
-        # IMPORTANT:
-        # Qwen3 normally thinks before answering.
-        # Disable thinking because we only need one emoji.
-        extra_body={
-            "chat_template_kwargs": {
-                "enable_thinking": False
-            }
-        },
+        max_tokens=10,
 
-        max_tokens=20,
+        temperature=0.2,
 
-        temperature=0.7,
-
-        top_p=0.8
+        top_p=0.9
     )
 
-    print("\nRAW RESPONSE:")
+    print()
+    print("RAW RESPONSE:")
     print(response)
-
-    # --------------------------------------------------------
-    # Get normal answer
-    # --------------------------------------------------------
 
     content = response.choices[0].message.content
 
-    print("\nMODEL CONTENT:")
+    print()
+    print("MODEL CONTENT:")
     print(repr(content))
-
-    # --------------------------------------------------------
-    # Extract emoji
-    # --------------------------------------------------------
 
     emoji = extract_emoji(content)
 
-    print("\nEXTRACTED EMOJI:")
+    print()
+    print("EXTRACTED EMOJI:")
     print(repr(emoji))
 
     if emoji:
         return emoji
 
     raise ValueError(
-        "Model did not return an emoji. "
-        f"Model response: {repr(content)}"
+        f"Model did not return an emoji. "
+        f"Raw content: {repr(content)}"
     )
 
 
 # ============================================================
-# HOME PAGE
+# HOME
 # ============================================================
 
 @app.route("/")
@@ -189,7 +191,7 @@ def home():
 
 
 # ============================================================
-# HEALTH CHECK
+# HEALTH
 # ============================================================
 
 @app.route("/health")
@@ -214,38 +216,35 @@ def health():
 @app.route("/predict", methods=["POST"])
 def predict():
 
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    text = data.get(
-        "text",
-        ""
-    ).strip()
-
-    if not text:
-
-        return jsonify({
-            "error": "Please enter some text."
-        }), 400
-
-    if not HF_TOKEN:
-
-        return jsonify({
-            "error": "HF_TOKEN is not configured."
-        }), 500
-
-    print("\n")
-    print("=" * 60)
-    print("NEW EMOJI REQUEST")
-    print("=" * 60)
-    print("TEXT:", text)
-
     try:
+
+        data = request.get_json(
+            silent=True
+        ) or {}
+
+        text = data.get(
+            "text",
+            ""
+        ).strip()
+
+        if not text:
+
+            return jsonify({
+                "error": "Please enter some text."
+            }), 400
+
+        if not HF_TOKEN:
+
+            return jsonify({
+                "error": "HF_TOKEN is missing on the server."
+            }), 500
 
         emoji = generate_emoji(text)
 
-        print("\nFINAL EMOJI:", emoji)
+        print()
+        print("=" * 60)
+        print("SUCCESS")
+        print("EMOJI:", emoji)
         print("=" * 60)
 
         return jsonify({
@@ -256,12 +255,12 @@ def predict():
 
     except Exception as e:
 
-        print("\n")
+        print()
         print("=" * 60)
         print("LLM ERROR")
         print("=" * 60)
-        print("ERROR TYPE:", type(e).__name__)
-        print("ERROR:", str(e))
+        print("TYPE:", type(e).__name__)
+        print("MESSAGE:", str(e))
         print("=" * 60)
 
         return jsonify({
@@ -271,7 +270,7 @@ def predict():
 
 
 # ============================================================
-# START SERVER
+# START
 # ============================================================
 
 if __name__ == "__main__":
@@ -283,17 +282,17 @@ if __name__ == "__main__":
         )
     )
 
-    print("")
+    print()
     print("=" * 60)
-    print("              EMOJI GENERATOR")
+    print("             EMOJI GENERATOR")
     print("=" * 60)
-    print("Model    :", MODEL)
-    print("Provider :", "auto")
+    print("MODEL    :", MODEL)
+    print("PROVIDER :", "auto")
     print(
-        "HF Token :",
+        "HF TOKEN :",
         "Configured" if HF_TOKEN else "MISSING"
     )
-    print("Port     :", port)
+    print("PORT     :", port)
     print("=" * 60)
 
     app.run(
